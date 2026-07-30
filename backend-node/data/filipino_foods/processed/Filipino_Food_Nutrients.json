@@ -1,0 +1,178 @@
+[
+  {
+    "source": {
+      "provider": "Filipino Food Table",
+      "dataset": "filipino",
+      "fdcId": 900000001
+    },
+    "name": "Chicken Adobo",
+    "filipinoName": "Adobong Manok",
+    "category": "Meat Dish",
+    "nutrientBasis": "per 100 g",
+    "nutrientsPer100g": {
+      "energyKcal": 168,
+      "proteinG": 12.8,
+      "carbohydratesG": 7.2,
+      "fatG": 9.6,
+      "sodiumMg": 380,
+      "potassiumMg": 208,
+      "cholesterolMg": 55,
+      "fiberG": 0.8,
+      "sugarG": 1.2
+    }
+  },
+  {
+    "source": {
+      "provider": "Filipino Food Table",
+      "dataset": "filipino",
+      "fdcId": 900000002
+    },
+    "name": "Pork Adobo",
+    "filipinoName": "Adobong Baboy",
+    "category": "Meat Dish",
+    "nutrientBasis": "per 100 g",
+    "nutrientsPer100g": {
+      "energyKcal": 190,
+      "proteinG": 14,
+      "carbohydratesG": 6,
+      "fatG": 13,
+      "sodiumMg": 420,
+      "potassiumMg": 230,
+      "cholesterolMg": 65,
+      "fiberG": 0.5,
+      "sugarG": 1
+    }
+  },
+  {
+    "source": {
+      "provider": "Filipino Food Table",
+      "dataset": "filipino",
+      "fdcId": 900000003
+    },
+    "name": "Sinigang na Baboy",
+    "filipinoName": "Sinigang na Baboy",
+    "category": "Soup",
+    "nutrientBasis": "per 100 g",
+    "nutrientsPer100g": {
+      "energyKcal": 120,
+      "proteinG": 11,
+      "carbohydratesG": 5,
+      "fatG": 6,
+      "sodiumMg": 500,
+      "potassiumMg": 260,
+      "cholesterolMg": 45,
+      "fiberG": 1,
+      "sugarG": 2
+    }
+  },
+  {
+    "source": {
+      "provider": "Filipino Food Table",
+      "dataset": "filipino",
+      "fdcId": 900000004
+    },
+    "name": "Chicken Tinola",
+    "filipinoName": "Tinolang Manok",
+    "category": "Soup",
+    "nutrientBasis": "per 100 g",
+    "nutrientsPer100g": {
+      "energyKcal": 85,
+      "proteinG": 9,
+      "carbohydratesG": 4,
+      "fatG": 3.5,
+      "sodiumMg": 350,
+      "potassiumMg": 240,
+      "cholesterolMg": 35,
+      "fiberG": 0.8,
+      "sugarG": 1
+    }
+  },
+  {
+    "source": {
+      "provider": "Filipino Food Table",
+      "dataset": "filipino",
+      "fdcId": 900000005
+    },
+    "name": "Beef Nilaga",
+    "filipinoName": "Nilagang Baka",
+    "category": "Soup",
+    "nutrientBasis": "per 100 g",
+    "nutrientsPer100g": {
+      "energyKcal": 135,
+      "proteinG": 12,
+      "carbohydratesG": 6,
+      "fatG": 7,
+      "sodiumMg": 430,
+      "potassiumMg": 280,
+      "cholesterolMg": 50,
+      "fiberG": 1,
+      "sugarG": 1
+    }
+  },
+  {
+    "source": {
+      "provider": "Filipino Food Table",
+      "dataset": "filipino",
+      "fdcId": 900000006
+    },
+    "name": "Kare-Kare",
+    "filipinoName": "Kare-Kare",
+    "category": "Meat Dish",
+    "nutrientBasis": "per 100 g",
+    "nutrientsPer100g": {
+      "energyKcal": 220,
+      "proteinG": 13,
+      "carbohydratesG": 8,
+      "fatG": 16,
+      "sodiumMg": 450,
+      "potassiumMg": 260,
+      "cholesterolMg": 60,
+      "fiberG": 1,
+      "sugarG": 2
+    }
+  },
+  {
+    "source": {
+      "provider": "Filipino Food Table",
+      "dataset": "filipino",
+      "fdcId": 900000007
+    },
+    "name": "Pancit Bihon",
+    "filipinoName": "Pansit Bihon",
+    "category": "Noodle Dish",
+    "nutrientBasis": "per 100 g",
+    "nutrientsPer100g": {
+      "energyKcal": 170,
+      "proteinG": 6,
+      "carbohydratesG": 28,
+      "fatG": 4,
+      "sodiumMg": 500,
+      "potassiumMg": 100,
+      "cholesterolMg": 20,
+      "fiberG": 1,
+      "sugarG": 2
+    }
+  },
+  {
+    "source": {
+      "provider": "Filipino Food Table",
+      "dataset": "filipino",
+      "fdcId": 900000008
+    },
+    "name": "Pancit Canton",
+    "filipinoName": "Pansit Canton",
+    "category": "Noodle Dish",
+    "nutrientBasis": "per 100 g",
+    "nutrientsPer100g": {
+      "energyKcal": 190,
+      "proteinG": 7,
+      "carbohydratesG": 30,
+      "fatG": 7,
+      "sodiumMg": 600,
+      "potassiumMg": 120,
+      "cholesterolMg": 35,
+      "fiberG": 1,
+      "sugarG": 3
+    }
+  }
+]

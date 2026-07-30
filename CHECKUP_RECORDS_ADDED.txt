@@ -1,0 +1,32 @@
+PERIODIC CHECKUP RECORDS ADDED
+
+Flutter:
+- lib/screens/checkup_records_screen.dart
+- lib/models/checkup_record.dart
+- Checkup navigation button in the Food & Water app bar
+- Manual add, edit, delete, refresh, and validation
+
+Backend:
+- POST   /api/checkup-records
+- GET    /api/checkup-records
+- GET    /api/checkup-records/:id
+- PATCH  /api/checkup-records/:id
+- DELETE /api/checkup-records/:id
+
+Storage:
+- backend-node/data/checkup_records/checkup_records.json
+- Test records persist after restarting the Node.js backend and computer.
+- This local JSON storage is for development testing and can be replaced by MongoDB later.
+
+Required input:
+- Checkup date
+- At least one measurement
+
+Optional measurements:
+- eGFR
+- Serum creatinine
+- UACR
+- Systolic blood pressure
+- Diastolic blood pressure
+- Blood glucose
+- Notes

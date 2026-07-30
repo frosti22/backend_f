@@ -1,0 +1,16 @@
+Food Name,Filipino Name,Category,Calories_kcal,Total_Fat_g,Cholesterol_mg,Carbohydrates_g,Fiber_g,Sugar_g,Protein_g,Sodium_mg,Potassium_mg
+Chicken Adobo,Adobong Manok,Meat Dish,168,9.6,55,7.2,0.8,1.2,12.8,380,208
+Pork Adobo,Adobong Baboy,Meat Dish,190,13,65,6,0.5,1,14,420,230
+Sinigang na Baboy,Sinigang na Baboy,Soup,120,6,45,5,1,2,11,500,260
+Chicken Tinola,Tinolang Manok,Soup,85,3.5,35,4,0.8,1,9,350,240
+Beef Nilaga,Nilagang Baka,Soup,135,7,50,6,1,1,12,430,280
+Kare-Kare,Kare-Kare,Meat Dish,220,16,60,8,1,2,13,450,260
+Pancit Bihon,Pansit Bihon,Noodle Dish,170,4,20,28,1,2,6,500,100
+Pancit Canton,Pansit Canton,Noodle Dish,190,7,35,30,1,3,7,600,120
+Lumpiang Shanghai,Lumpiang Shanghai,Snack,250,15,45,18,1,2,12,450,200
+Tortang Talong,Tortang Talong,Vegetable Dish,150,10,100,8,2,2,7,300,220
+Pinakbet,Pinakbet,Vegetable Dish,90,4,10,12,3,3,4,350,300
+Arroz Caldo,Arroz Caldo,Rice Dish,130,4,25,18,1,1,7,420,180
+Sinangag,Garlic Fried Rice,Rice Dish,175,4,0,32,0.5,0.5,3,200,55
+Turon,Turon,Snack/Dessert,220,8,0,38,2,20,2,100,200
+Halo-Halo,Halo-Halo,Dessert,180,5,10,35,2,25,3,120,150

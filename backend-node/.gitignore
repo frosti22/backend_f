@@ -1,0 +1,7 @@
+node_modules/
+.env
+uploads/temp/*
+!uploads/temp/.gitkeep
+data/usda/raw/
+data/open_food_facts/raw/
+data/facilities/raw/
