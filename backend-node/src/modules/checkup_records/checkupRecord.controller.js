@@ -1,6 +1,7 @@
 const checkupRecordService = require(
   './checkupRecord.service',
 );
+
 const {
   validateCheckupPayload,
 } = require('./checkupRecord.validator');
@@ -34,9 +35,11 @@ function createCheckupRecord(req, res) {
     .json({
       success: true,
       duplicate: result.duplicate,
+
       message: result.duplicate
         ? 'This checkup record was already submitted.'
         : 'Checkup record saved successfully.',
+
       data: result.record,
     });
 }
@@ -88,10 +91,15 @@ function updateCheckupRecord(req, res) {
     });
   }
 
+  /*
+   * Combine the existing record and the new values.
+   * This allows partial PATCH updates.
+   */
   const validation = validateCheckupPayload({
     ...existing,
     ...req.body,
-    clientRecordId: existing.clientRecordId,
+    clientRecordId:
+      existing.clientRecordId,
   });
 
   if (!validation.valid) {
@@ -110,7 +118,8 @@ function updateCheckupRecord(req, res) {
 
   return res.json({
     success: true,
-    message: 'Checkup record updated successfully.',
+    message:
+      'Checkup record updated successfully.',
     data: record,
   });
 }
@@ -131,7 +140,8 @@ function deleteCheckupRecord(req, res) {
 
   return res.json({
     success: true,
-    message: 'Checkup record deleted successfully.',
+    message:
+      'Checkup record deleted successfully.',
     data: record,
   });
 }

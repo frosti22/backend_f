@@ -1,4 +1,6 @@
-const foodService = require('../foods/food.service');
+const foodService = require(
+  '../foods/food.service',
+);
 
 const NUTRIENT_KEYS = [
   'energyKcal',
@@ -9,26 +11,39 @@ const NUTRIENT_KEYS = [
   'potassiumMg',
 ];
 
-function roundNumber(value, decimalPlaces = 2) {
+function roundNumber(
+  value,
+  decimalPlaces = 2,
+) {
   const multiplier = 10 ** decimalPlaces;
 
-  return Math.round(
-    (value + Number.EPSILON) * multiplier,
-  ) / multiplier;
+  return (
+    Math.round(
+      (value + Number.EPSILON) * multiplier,
+    ) / multiplier
+  );
 }
 
 function calculateNutrientAmount(
   nutrientPer100g,
   consumedGrams,
 ) {
+  /*
+   * Keep missing nutrients as null.
+   * This allows carbohydrates and potassium
+   * to remain hidden when the food has no value.
+   */
   if (
     nutrientPer100g === null ||
-    nutrientPer100g === undefined
+    nutrientPer100g === undefined ||
+    nutrientPer100g === ''
   ) {
     return null;
   }
 
-  const numericNutrient = Number(nutrientPer100g);
+  const numericNutrient = Number(
+    nutrientPer100g,
+  );
 
   if (!Number.isFinite(numericNutrient)) {
     return null;
@@ -40,10 +55,18 @@ function calculateNutrientAmount(
 }
 
 function calculateNutrition({
+  userId = 'test-user',
   fdcId,
   consumedGrams,
 }) {
-  const food = foodService.getFoodByFdcId(fdcId);
+  /*
+   * Pass the user ID so manually created foods
+   * can also be found and calculated.
+   */
+  const food = foodService.getFoodByFdcId(
+    fdcId,
+    userId,
+  );
 
   if (!food) {
     return null;
@@ -68,10 +91,13 @@ function calculateNutrition({
       name: food.name,
       category: food.category ?? null,
       source: food.source,
+      isCustom:
+        food.source?.isCustom === true,
     },
 
     quantity: {
       consumedGrams,
+      unit: 'g',
       nutrientBasis: 'per 100 g',
     },
 

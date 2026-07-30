@@ -1,5 +1,11 @@
 const foodService = require('./food.service');
 
+function getUserId(req) {
+  return String(
+    req.header('x-user-id') || 'test-user',
+  ).trim();
+}
+
 function parseNonNegativeInteger(
   value,
   defaultValue,
@@ -36,12 +42,16 @@ function searchFoods(req, res) {
 
   if (
     dataset &&
-    !['foundation', 'fndds', 'filipino'].includes(dataset)
+    ![
+      'foundation',
+      'fndds',
+      'filipino',
+    ].includes(dataset)
   ) {
     return res.status(400).json({
       success: false,
       message:
-        'dataset must be foundation or fndds.',
+        'dataset must be foundation, fndds, or filipino.',
     });
   }
 
@@ -58,6 +68,7 @@ function searchFoods(req, res) {
   );
 
   const result = foodService.searchFoods({
+    userId: getUserId(req),
     query,
     dataset,
     limit,
@@ -78,6 +89,7 @@ function searchFoods(req, res) {
 function getFoodByFdcId(req, res) {
   const food = foodService.getFoodByFdcId(
     req.params.fdcId,
+    getUserId(req),
   );
 
   if (!food) {
@@ -103,8 +115,10 @@ function getFoodStatus(_req, res) {
       foundationFoods: counts.foundation,
       fnddsSurveyFoods: counts.fndds,
       filipinoFoods: counts.filipino,
+      customFoods: counts.custom,
     },
-    totalLoadedFoods: counts.total,
+    totalLoadedFoods:
+      counts.total + counts.custom,
   });
 }
 

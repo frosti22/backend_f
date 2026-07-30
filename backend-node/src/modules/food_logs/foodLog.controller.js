@@ -90,7 +90,8 @@ function validateManualNutrients(input) {
     ) {
       return {
         valid: false,
-        message: `${key} must be zero or a positive number.`,
+        message:
+          `${key} must be zero or a positive number.`,
       };
     }
 
@@ -126,7 +127,7 @@ function createFoodLog(req, res) {
     return res.status(400).json({
       success: false,
       message:
-        'fdcId must be a valid USDA food ID.',
+        'fdcId must be a valid food ID.',
     });
   }
 
@@ -276,8 +277,9 @@ function createManualFoodLog(req, res) {
     success: true,
     duplicate: false,
     message:
-      'Manual food log created successfully.',
+      'Manual food saved, added to the meal, and made searchable.',
     data: result.record,
+    customFood: result.customFood,
   });
 }
 
@@ -410,7 +412,7 @@ function updateFoodLog(req, res) {
     return res.status(404).json({
       success: false,
       message:
-        'The selected USDA food was not found.',
+        'The selected food was not found.',
     });
   }
 

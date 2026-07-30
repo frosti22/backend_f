@@ -6,6 +6,7 @@ import '../config/api_config.dart';
 import '../models/checkup_record.dart';
 import '../models/food_log_entry.dart';
 import '../models/food_suggestion.dart';
+import '../models/water_container.dart';
 import '../models/water_log_entry.dart';
 
 class ApiException implements Exception {
@@ -25,28 +26,32 @@ class ApiService {
 
   Uri _uri(String path, [Map<String, String>? query]) {
     final base = Uri.parse(ApiConfig.baseUrl);
-    return base.replace(
-      path: '${base.path}$path',
-      queryParameters: query,
-    );
+
+    return base.replace(path: '${base.path}$path', queryParameters: query);
   }
 
   Map<String, dynamic> _decode(http.Response response) {
     dynamic decoded;
+
     try {
       decoded = jsonDecode(response.body);
     } catch (_) {
       throw ApiException(
-        'The backend returned an unreadable response (${response.statusCode}).',
+        'The backend returned an unreadable response '
+        '(${response.statusCode}).',
       );
     }
 
     final body = Map<String, dynamic>.from(decoded as Map);
+
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException(
-        body['message']?.toString() ?? 'Request failed (${response.statusCode}).',
+        body['message']?.toString() ??
+            'Request failed '
+                '(${response.statusCode}).',
       );
     }
+
     return body;
   }
 
@@ -54,27 +59,25 @@ class ApiService {
     final response = await http
         .get(_uri('/health'))
         .timeout(const Duration(seconds: 8));
+
     _decode(response);
   }
 
   Future<List<FoodSuggestion>> searchFoods(String query) async {
     final response = await http
         .get(
-          _uri('/api/foods/search', {
-            'q': query,
-            'limit': '10',
-          }),
+          _uri('/api/foods/search', {'q': query, 'limit': '10'}),
           headers: _baseHeaders,
         )
         .timeout(const Duration(seconds: 12));
 
     final body = _decode(response);
     final data = body['data'] as List? ?? const [];
+
     return data
         .map(
-          (item) => FoodSuggestion.fromJson(
-            Map<String, dynamic>.from(item as Map),
-          ),
+          (item) =>
+              FoodSuggestion.fromJson(Map<String, dynamic>.from(item as Map)),
         )
         .toList();
   }
@@ -87,14 +90,12 @@ class ApiService {
         .post(
           _uri('/api/nutrition/calculate'),
           headers: _baseHeaders,
-          body: jsonEncode({
-            'fdcId': fdcId,
-            'consumedGrams': consumedGrams,
-          }),
+          body: jsonEncode({'fdcId': fdcId, 'consumedGrams': consumedGrams}),
         )
         .timeout(const Duration(seconds: 12));
 
     final body = _decode(response);
+
     return Map<String, dynamic>.from(body['data'] as Map);
   }
 
@@ -113,10 +114,12 @@ class ApiService {
             'mealType': mealType,
             'consumedAt': DateTime.now().toIso8601String(),
             'clientRecordId':
-                'food-${DateTime.now().microsecondsSinceEpoch}',
+                'food-'
+                '${DateTime.now().microsecondsSinceEpoch}',
           }),
         )
         .timeout(const Duration(seconds: 12));
+
     _decode(response);
   }
 
@@ -138,10 +141,12 @@ class ApiService {
             'consumedAt': DateTime.now().toIso8601String(),
             'nutrients': nutrients,
             'clientRecordId':
-                'manual-food-${DateTime.now().microsecondsSinceEpoch}',
+                'manual-food-'
+                '${DateTime.now().microsecondsSinceEpoch}',
           }),
         )
         .timeout(const Duration(seconds: 12));
+
     _decode(response);
   }
 
@@ -149,13 +154,14 @@ class ApiService {
     final response = await http
         .get(_uri('/api/food-logs'), headers: _baseHeaders)
         .timeout(const Duration(seconds: 12));
+
     final body = _decode(response);
     final data = body['data'] as List? ?? const [];
+
     return data
         .map(
-          (item) => FoodLogEntry.fromJson(
-            Map<String, dynamic>.from(item as Map),
-          ),
+          (item) =>
+              FoodLogEntry.fromJson(Map<String, dynamic>.from(item as Map)),
         )
         .toList();
   }
@@ -164,7 +170,9 @@ class ApiService {
     final response = await http
         .get(_uri('/api/food-logs/summary'), headers: _baseHeaders)
         .timeout(const Duration(seconds: 12));
+
     final body = _decode(response);
+
     return Map<String, dynamic>.from(body['data'] as Map);
   }
 
@@ -172,23 +180,61 @@ class ApiService {
     final response = await http
         .delete(_uri('/api/food-logs/$id'), headers: _baseHeaders)
         .timeout(const Duration(seconds: 12));
+
     _decode(response);
   }
 
-  Future<void> addWater(double amountMl) async {
+  Future<WaterContainer> saveWaterContainer({
+    required String name,
+    required double capacityMl,
+  }) async {
+    final response = await http
+        .post(
+          _uri('/api/water-logs/containers'),
+          headers: _baseHeaders,
+          body: jsonEncode({'name': name, 'capacityMl': capacityMl}),
+        )
+        .timeout(const Duration(seconds: 12));
+
+    final body = _decode(response);
+
+    return WaterContainer.fromJson(
+      Map<String, dynamic>.from(body['data'] as Map),
+    );
+  }
+
+  Future<List<WaterContainer>> getWaterContainers() async {
+    final response = await http
+        .get(_uri('/api/water-logs/containers'), headers: _baseHeaders)
+        .timeout(const Duration(seconds: 12));
+
+    final body = _decode(response);
+    final data = body['data'] as List? ?? const [];
+
+    return data
+        .map(
+          (item) =>
+              WaterContainer.fromJson(Map<String, dynamic>.from(item as Map)),
+        )
+        .toList();
+  }
+
+  Future<void> addWaterFromContainer(String containerId) async {
     final response = await http
         .post(
           _uri('/api/water-logs'),
           headers: _baseHeaders,
           body: jsonEncode({
-            'amountMl': amountMl,
+            'containerId': containerId,
             'loggedAt': DateTime.now().toIso8601String(),
             'source': 'manual',
             'clientRecordId':
-                'water-${DateTime.now().microsecondsSinceEpoch}',
+                'water-'
+                '${DateTime.now().microsecondsSinceEpoch}',
           }),
         )
         .timeout(const Duration(seconds: 12));
+
     _decode(response);
   }
 
@@ -196,13 +242,14 @@ class ApiService {
     final response = await http
         .get(_uri('/api/water-logs'), headers: _baseHeaders)
         .timeout(const Duration(seconds: 12));
+
     final body = _decode(response);
     final data = body['data'] as List? ?? const [];
+
     return data
         .map(
-          (item) => WaterLogEntry.fromJson(
-            Map<String, dynamic>.from(item as Map),
-          ),
+          (item) =>
+              WaterLogEntry.fromJson(Map<String, dynamic>.from(item as Map)),
         )
         .toList();
   }
@@ -211,7 +258,9 @@ class ApiService {
     final response = await http
         .get(_uri('/api/water-logs/summary'), headers: _baseHeaders)
         .timeout(const Duration(seconds: 12));
+
     final body = _decode(response);
+
     return Map<String, dynamic>.from(body['data'] as Map);
   }
 
@@ -219,24 +268,22 @@ class ApiService {
     final response = await http
         .delete(_uri('/api/water-logs/$id'), headers: _baseHeaders)
         .timeout(const Duration(seconds: 12));
+
     _decode(response);
   }
 
   Future<List<CheckupRecord>> getCheckupRecords() async {
     final response = await http
-        .get(
-          _uri('/api/checkup-records'),
-          headers: _baseHeaders,
-        )
+        .get(_uri('/api/checkup-records'), headers: _baseHeaders)
         .timeout(const Duration(seconds: 12));
 
     final body = _decode(response);
     final data = body['data'] as List? ?? const [];
+
     return data
         .map(
-          (item) => CheckupRecord.fromJson(
-            Map<String, dynamic>.from(item as Map),
-          ),
+          (item) =>
+              CheckupRecord.fromJson(Map<String, dynamic>.from(item as Map)),
         )
         .toList();
   }
@@ -265,7 +312,8 @@ class ApiService {
             'bloodGlucoseMgDl': bloodGlucoseMgDl,
             'notes': notes,
             'clientRecordId':
-                'checkup-${DateTime.now().microsecondsSinceEpoch}',
+                'checkup-'
+                '${DateTime.now().microsecondsSinceEpoch}',
           }),
         )
         .timeout(const Duration(seconds: 12));
@@ -306,13 +354,9 @@ class ApiService {
 
   Future<void> deleteCheckupRecord(String id) async {
     final response = await http
-        .delete(
-          _uri('/api/checkup-records/$id'),
-          headers: _baseHeaders,
-        )
+        .delete(_uri('/api/checkup-records/$id'), headers: _baseHeaders)
         .timeout(const Duration(seconds: 12));
 
     _decode(response);
   }
-
 }

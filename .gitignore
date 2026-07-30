@@ -55,3 +55,7 @@ ml-fastapi/.venv/
 ml-fastapi/venv/
 ml-fastapi/__pycache__/
 **/*.pyc
+ml-fastapi/__pycache__/
+**/*.pyc
+
+backend-node/data/local_storage/app_storage.json

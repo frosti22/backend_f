@@ -1,64 +1,28 @@
-const fs = require('fs');
-const path = require('path');
 const { randomUUID } = require('crypto');
 
-const DATA_FILE = path.join(
-  __dirname,
-  '..',
-  '..',
-  '..',
-  'data',
-  'checkup_records',
-  'checkup_records.json',
+const localStorage = require(
+  '../../common/storage/localJsonStorage',
 );
 
-function ensureDataFile() {
-  fs.mkdirSync(path.dirname(DATA_FILE), {
-    recursive: true,
-  });
-
-  if (!fs.existsSync(DATA_FILE)) {
-    fs.writeFileSync(DATA_FILE, '[]\n', 'utf8');
-  }
-}
-
-function loadRecords() {
-  ensureDataFile();
-
-  try {
-    const parsed = JSON.parse(
-      fs.readFileSync(DATA_FILE, 'utf8'),
-    );
-
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    console.error(
-      'Could not read checkup record storage:',
-      error.message,
-    );
-    return [];
-  }
-}
-
-const checkupRecords = loadRecords();
-
-function persistRecords() {
-  fs.writeFileSync(
-    DATA_FILE,
-    `${JSON.stringify(checkupRecords, null, 2)}\n`,
-    'utf8',
+const checkupRecords =
+  localStorage.getCollection(
+    'checkupRecords',
   );
-}
 
 function createCheckupRecord({
   userId,
   data,
 }) {
+  /*
+   * Prevent duplicate submissions when the Flutter
+   * application sends the same clientRecordId again.
+   */
   if (data.clientRecordId) {
     const existing = checkupRecords.find(
       (record) =>
         record.userId === userId &&
-        record.clientRecordId === data.clientRecordId,
+        record.clientRecordId ===
+          data.clientRecordId,
     );
 
     if (existing) {
@@ -70,28 +34,50 @@ function createCheckupRecord({
   }
 
   const now = new Date().toISOString();
+
   const record = {
     id: randomUUID(),
     userId,
-    clientRecordId: data.clientRecordId,
+
+    clientRecordId:
+      data.clientRecordId || null,
+
     checkupDate: data.checkupDate,
-    egfrMlMin173m2: data.egfrMlMin173m2,
+
+    egfrMlMin173m2:
+      data.egfrMlMin173m2,
+
     serumCreatinineMgDl:
       data.serumCreatinineMgDl,
-    uacrMgG: data.uacrMgG,
+
+    uacrMgG:
+      data.uacrMgG,
+
     systolicBloodPressure:
       data.systolicBloodPressure,
+
     diastolicBloodPressure:
       data.diastolicBloodPressure,
-    bloodGlucoseMgDl: data.bloodGlucoseMgDl,
-    notes: data.notes,
+
+    bloodGlucoseMgDl:
+      data.bloodGlucoseMgDl,
+
+    notes:
+      data.notes || null,
+
     source: 'manual',
+
     createdAt: now,
     updatedAt: now,
   };
 
   checkupRecords.push(record);
-  persistRecords();
+
+  /*
+   * Save the updated collection in:
+   * data/local_storage/app_storage.json
+   */
+  localStorage.persist();
 
   return {
     duplicate: false,
@@ -99,25 +85,38 @@ function createCheckupRecord({
   };
 }
 
-function getCheckupRecords({ userId }) {
+function getCheckupRecords({
+  userId,
+}) {
   return checkupRecords
-    .filter((record) => record.userId === userId)
+    .filter(
+      (record) =>
+        record.userId === userId,
+    )
     .sort((a, b) => {
-      const dateComparison = String(
-        b.checkupDate,
-      ).localeCompare(String(a.checkupDate));
+      const dateComparison =
+        String(
+          b.checkupDate,
+        ).localeCompare(
+          String(a.checkupDate),
+        );
 
       if (dateComparison !== 0) {
         return dateComparison;
       }
 
-      return String(b.createdAt).localeCompare(
+      return String(
+        b.createdAt,
+      ).localeCompare(
         String(a.createdAt),
       );
     });
 }
 
-function getCheckupRecordById({ userId, id }) {
+function getCheckupRecordById({
+  userId,
+  id,
+}) {
   return (
     checkupRecords.find(
       (record) =>
@@ -142,30 +141,53 @@ function updateCheckupRecord({
     return null;
   }
 
-  const existing = checkupRecords[index];
+  const existing =
+    checkupRecords[index];
+
   const updated = {
     ...existing,
-    checkupDate: data.checkupDate,
-    egfrMlMin173m2: data.egfrMlMin173m2,
+
+    checkupDate:
+      data.checkupDate,
+
+    egfrMlMin173m2:
+      data.egfrMlMin173m2,
+
     serumCreatinineMgDl:
       data.serumCreatinineMgDl,
-    uacrMgG: data.uacrMgG,
+
+    uacrMgG:
+      data.uacrMgG,
+
     systolicBloodPressure:
       data.systolicBloodPressure,
+
     diastolicBloodPressure:
       data.diastolicBloodPressure,
-    bloodGlucoseMgDl: data.bloodGlucoseMgDl,
-    notes: data.notes,
+
+    bloodGlucoseMgDl:
+      data.bloodGlucoseMgDl,
+
+    notes:
+      data.notes || null,
+
     source: 'manual',
-    updatedAt: new Date().toISOString(),
+
+    updatedAt:
+      new Date().toISOString(),
   };
 
   checkupRecords[index] = updated;
-  persistRecords();
+
+  localStorage.persist();
+
   return updated;
 }
 
-function deleteCheckupRecord({ userId, id }) {
+function deleteCheckupRecord({
+  userId,
+  id,
+}) {
   const index = checkupRecords.findIndex(
     (record) =>
       record.userId === userId &&
@@ -176,9 +198,12 @@ function deleteCheckupRecord({ userId, id }) {
     return null;
   }
 
-  const [deleted] = checkupRecords.splice(index, 1);
-  persistRecords();
-  return deleted;
+  const [deletedRecord] =
+    checkupRecords.splice(index, 1);
+
+  localStorage.persist();
+
+  return deletedRecord;
 }
 
 module.exports = {

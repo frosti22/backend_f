@@ -16,16 +16,25 @@ class _CheckupRecordsScreenState extends State<CheckupRecordsScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _egfrController = TextEditingController();
+
   final _creatinineController = TextEditingController();
+
   final _uacrController = TextEditingController();
+
   final _systolicController = TextEditingController();
+
   final _diastolicController = TextEditingController();
+
   final _glucoseController = TextEditingController();
+
   final _notesController = TextEditingController();
 
   DateTime _checkupDate = DateTime.now();
+
   String? _editingId;
+
   List<CheckupRecord> _records = const [];
+
   bool _loading = false;
   bool _saving = false;
   String? _connectionError;
@@ -50,13 +59,17 @@ class _CheckupRecordsScreenState extends State<CheckupRecordsScreen> {
 
   double? _optionalNumber(TextEditingController controller) {
     final text = controller.text.trim();
+
     return text.isEmpty ? null : double.tryParse(text);
   }
 
   String _dateValue(DateTime date) {
     final year = date.year.toString().padLeft(4, '0');
+
     final month = date.month.toString().padLeft(2, '0');
+
     final day = date.day.toString().padLeft(2, '0');
+
     return '$year-$month-$day';
   }
 
@@ -75,14 +88,20 @@ class _CheckupRecordsScreenState extends State<CheckupRecordsScreen> {
       'November',
       'December',
     ];
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+
+    return '${months[date.month - 1]} '
+        '${date.day}, ${date.year}';
   }
 
   String _number(double? value) {
-    if (value == null) return '—';
+    if (value == null) {
+      return '—';
+    }
+
     if (value == value.roundToDouble()) {
       return value.toInt().toString();
     }
+
     return value
         .toStringAsFixed(2)
         .replaceFirst(RegExp(r'0+$'), '')
@@ -90,12 +109,21 @@ class _CheckupRecordsScreenState extends State<CheckupRecordsScreen> {
   }
 
   String _friendlyError(Object error) {
-    if (error is ApiException) return error.message;
-    return 'Could not connect to ${ApiConfig.baseUrl}. Start the Node.js backend and check the API address.';
+    if (error is ApiException) {
+      return error.message;
+    }
+
+    return 'Could not connect to '
+        '${ApiConfig.baseUrl}. '
+        'Start the Node.js backend and '
+        'check the API address.';
   }
 
   void _showMessage(String message, {bool error = false}) {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
+
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -107,7 +135,10 @@ class _CheckupRecordsScreenState extends State<CheckupRecordsScreen> {
   }
 
   Future<void> _loadRecords() async {
-    if (_loading) return;
+    if (_loading) {
+      return;
+    }
+
     setState(() {
       _loading = true;
       _connectionError = null;
@@ -115,13 +146,28 @@ class _CheckupRecordsScreenState extends State<CheckupRecordsScreen> {
 
     try {
       final records = await _api.getCheckupRecords();
-      if (!mounted) return;
-      setState(() => _records = records);
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _records = records;
+      });
     } catch (error) {
-      if (!mounted) return;
-      setState(() => _connectionError = _friendlyError(error));
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _connectionError = _friendlyError(error);
+      });
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -134,17 +180,26 @@ class _CheckupRecordsScreenState extends State<CheckupRecordsScreen> {
     );
 
     if (selected != null) {
-      setState(() => _checkupDate = selected);
+      setState(() {
+        _checkupDate = selected;
+      });
     }
   }
 
   String? _optionalNumberValidator(String? value) {
     final text = value?.trim() ?? '';
-    if (text.isEmpty) return null;
-    final number = double.tryParse(text);
-    if (number == null || number < 0) {
-      return 'Enter a valid non-negative number.';
+
+    if (text.isEmpty) {
+      return null;
     }
+
+    final number = double.tryParse(text);
+
+    if (number == null || number < 0) {
+      return 'Enter a valid '
+          'non-negative number.';
+    }
+
     return null;
   }
 
@@ -160,17 +215,24 @@ class _CheckupRecordsScreenState extends State<CheckupRecordsScreen> {
   }
 
   Future<void> _saveRecord() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    if (!_hasAtLeastOneMeasurement()) {
-      _showMessage(
-        'Enter at least one measurement from the checkup report.',
-        error: true,
-      );
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    setState(() => _saving = true);
+    if (!_hasAtLeastOneMeasurement()) {
+      _showMessage(
+        'Enter at least one '
+        'measurement from the '
+        'checkup report.',
+        error: true,
+      );
+
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+    });
 
     try {
       final values = <String, double?>{
@@ -208,20 +270,27 @@ class _CheckupRecordsScreenState extends State<CheckupRecordsScreen> {
       }
 
       final wasEditing = _editingId != null;
+
       _clearForm();
       await _loadRecords();
+
       _showMessage(
         wasEditing ? 'Checkup record updated.' : 'Checkup record saved.',
       );
     } catch (error) {
       _showMessage(_friendlyError(error), error: true);
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() {
+          _saving = false;
+        });
+      }
     }
   }
 
   void _clearForm() {
     _formKey.currentState?.reset();
+
     _egfrController.clear();
     _creatinineController.clear();
     _uacrController.clear();
@@ -229,6 +298,7 @@ class _CheckupRecordsScreenState extends State<CheckupRecordsScreen> {
     _diastolicController.clear();
     _glucoseController.clear();
     _notesController.clear();
+
     setState(() {
       _editingId = null;
       _checkupDate = DateTime.now();
@@ -237,11 +307,17 @@ class _CheckupRecordsScreenState extends State<CheckupRecordsScreen> {
 
   void _editRecord(CheckupRecord record) {
     _egfrController.text = _numberForInput(record.egfrMlMin173m2);
+
     _creatinineController.text = _numberForInput(record.serumCreatinineMgDl);
+
     _uacrController.text = _numberForInput(record.uacrMgG);
+
     _systolicController.text = _numberForInput(record.systolicBloodPressure);
+
     _diastolicController.text = _numberForInput(record.diastolicBloodPressure);
+
     _glucoseController.text = _numberForInput(record.bloodGlucoseMgDl);
+
     _notesController.text = record.notes ?? '';
 
     setState(() {
@@ -249,14 +325,21 @@ class _CheckupRecordsScreenState extends State<CheckupRecordsScreen> {
       _checkupDate = record.checkupDate;
     });
 
-    Scrollable.ensureVisible(
-      _formKey.currentContext!,
-      duration: const Duration(milliseconds: 300),
-    );
+    final formContext = _formKey.currentContext;
+
+    if (formContext != null) {
+      Scrollable.ensureVisible(
+        formContext,
+        duration: const Duration(milliseconds: 300),
+      );
+    }
   }
 
   String _numberForInput(double? value) {
-    if (value == null) return '';
+    if (value == null) {
+      return '';
+    }
+
     return value == value.roundToDouble()
         ? value.toInt().toString()
         : value.toString();
@@ -268,7 +351,8 @@ class _CheckupRecordsScreenState extends State<CheckupRecordsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Delete checkup record?'),
         content: Text(
-          'Delete the record from ${_displayDate(record.checkupDate)}?',
+          'Delete the record from '
+          '${_displayDate(record.checkupDate)}?',
         ),
         actions: [
           TextButton(
@@ -283,12 +367,19 @@ class _CheckupRecordsScreenState extends State<CheckupRecordsScreen> {
       ),
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true) {
+      return;
+    }
 
     try {
       await _api.deleteCheckupRecord(record.id);
-      if (_editingId == record.id) _clearForm();
+
+      if (_editingId == record.id) {
+        _clearForm();
+      }
+
       await _loadRecords();
+
       _showMessage('Checkup record deleted.');
     } catch (error) {
       _showMessage(_friendlyError(error), error: true);
@@ -297,6 +388,7 @@ class _CheckupRecordsScreenState extends State<CheckupRecordsScreen> {
 
   Future<void> _showApiAddressDialog() async {
     final controller = TextEditingController(text: ApiConfig.baseUrl);
+
     final value = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
@@ -321,10 +413,15 @@ class _CheckupRecordsScreenState extends State<CheckupRecordsScreen> {
         ],
       ),
     );
+
     controller.dispose();
 
-    if (value == null || value.isEmpty) return;
+    if (value == null || value.isEmpty) {
+      return;
+    }
+
     ApiConfig.baseUrl = value.replaceAll(RegExp(r'/$'), '');
+
     await _loadRecords();
   }
 
@@ -377,7 +474,10 @@ class _CheckupRecordsScreenState extends State<CheckupRecordsScreen> {
               const Card(
                 child: Padding(
                   padding: EdgeInsets.all(18),
-                  child: Text('No checkup records saved yet.'),
+                  child: Text(
+                    'No checkup records '
+                    'saved yet.',
+                  ),
                 ),
               )
             else
@@ -418,7 +518,11 @@ class _CheckupRecordsScreenState extends State<CheckupRecordsScreen> {
               ),
               const SizedBox(height: 6),
               const Text(
-                'Enter only values shown on the checkup or laboratory report. All measurement fields are optional, but at least one is required.',
+                'Enter only values shown '
+                'on the checkup or laboratory '
+                'report. All measurement '
+                'fields are optional, but at '
+                'least one is required.',
               ),
               const SizedBox(height: 16),
               ListTile(
@@ -544,31 +648,64 @@ class _CheckupRecordsScreenState extends State<CheckupRecordsScreen> {
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       validator: _optionalNumberValidator,
-      decoration: InputDecoration(labelText: label, suffixText: unit),
+      decoration: InputDecoration(
+        labelText: label,
+
+        /*
+         * The unit is shown permanently,
+         * even before the field is clicked.
+         */
+        suffixIcon: Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: Center(
+            widthFactor: 1,
+            child: Text(
+              unit,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ),
+        suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+      ),
     );
   }
 
   Widget _recordCard(CheckupRecord record) {
     final values = <Widget>[
       if (record.egfrMlMin173m2 != null)
-        _valueChip('eGFR', '${_number(record.egfrMlMin173m2)} mL/min/1.73 m²'),
+        _valueChip(
+          'eGFR',
+          '${_number(record.egfrMlMin173m2)} '
+              'mL/min/1.73 m²',
+        ),
       if (record.serumCreatinineMgDl != null)
         _valueChip(
           'Creatinine',
-          '${_number(record.serumCreatinineMgDl)} mg/dL',
+          '${_number(record.serumCreatinineMgDl)} '
+              'mg/dL',
         ),
       if (record.uacrMgG != null)
-        _valueChip('UACR', '${_number(record.uacrMgG)} mg/g'),
+        _valueChip(
+          'UACR',
+          '${_number(record.uacrMgG)} '
+              'mg/g',
+        ),
       if (record.systolicBloodPressure != null ||
           record.diastolicBloodPressure != null)
         _valueChip(
           'Blood pressure',
-          '${_number(record.systolicBloodPressure)}/${_number(record.diastolicBloodPressure)} mmHg',
+          '${_number(record.systolicBloodPressure)}'
+              '/'
+              '${_number(record.diastolicBloodPressure)} '
+              'mmHg',
         ),
       if (record.bloodGlucoseMgDl != null)
         _valueChip(
           'Blood glucose',
-          '${_number(record.bloodGlucoseMgDl)} mg/dL',
+          '${_number(record.bloodGlucoseMgDl)} '
+              'mg/dL',
         ),
     ];
 

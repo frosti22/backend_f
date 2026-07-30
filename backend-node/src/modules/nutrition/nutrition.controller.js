@@ -2,12 +2,17 @@ const nutritionService = require(
   './nutrition.service',
 );
 
+function getUserId(req) {
+  return String(
+    req.header('x-user-id') || 'test-user',
+  ).trim();
+}
+
 function calculateNutrition(req, res) {
   const { fdcId, consumedGrams } = req.body;
 
   const numericFdcId = Number(fdcId);
-  const numericConsumedGrams =
-    Number(consumedGrams);
+  const numericConsumedGrams = Number(consumedGrams);
 
   if (
     !Number.isInteger(numericFdcId) ||
@@ -16,7 +21,7 @@ function calculateNutrition(req, res) {
     return res.status(400).json({
       success: false,
       message:
-        'fdcId must be a valid positive USDA food ID.',
+        'fdcId must be a valid positive food ID.',
     });
   }
 
@@ -34,6 +39,7 @@ function calculateNutrition(req, res) {
 
   const result =
     nutritionService.calculateNutrition({
+      userId: getUserId(req),
       fdcId: numericFdcId,
       consumedGrams: numericConsumedGrams,
     });

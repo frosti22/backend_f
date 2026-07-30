@@ -1,10 +1,20 @@
 const { randomUUID } = require('crypto');
 
+const localStorage = require(
+  '../../common/storage/localJsonStorage',
+);
+
+const foodService = require(
+  '../foods/food.service',
+);
+
 const nutritionService = require(
   '../nutrition/nutrition.service',
 );
 
-const foodLogs = [];
+const foodLogs = localStorage.getCollection(
+  'foodLogs',
+);
 
 const VALID_MEAL_TYPES = new Set([
   'breakfast',
@@ -24,6 +34,23 @@ function roundNumber(value, decimalPlaces = 2) {
   );
 }
 
+function findDuplicate({
+  userId,
+  clientRecordId,
+}) {
+  if (!clientRecordId) {
+    return null;
+  }
+
+  return (
+    foodLogs.find(
+      (record) =>
+        record.userId === userId &&
+        record.clientRecordId === clientRecordId,
+    ) || null
+  );
+}
+
 function createFoodLog({
   userId,
   fdcId,
@@ -33,24 +60,22 @@ function createFoodLog({
   notes,
   clientRecordId,
 }) {
-  if (clientRecordId) {
-    const existingRecord = foodLogs.find(
-      (record) =>
-        record.userId === userId &&
-        record.clientRecordId === clientRecordId,
-    );
+  const existingRecord = findDuplicate({
+    userId,
+    clientRecordId,
+  });
 
-    if (existingRecord) {
-      return {
-        created: false,
-        duplicate: true,
-        record: existingRecord,
-      };
-    }
+  if (existingRecord) {
+    return {
+      created: false,
+      duplicate: true,
+      record: existingRecord,
+    };
   }
 
   const nutritionResult =
     nutritionService.calculateNutrition({
+      userId,
       fdcId,
       consumedGrams,
     });
@@ -67,10 +92,7 @@ function createFoodLog({
 
   const record = {
     id: randomUUID(),
-
-    // Temporary until JWT authentication is connected.
     userId,
-
     clientRecordId: clientRecordId || null,
 
     food: {
@@ -87,43 +109,24 @@ function createFoodLog({
       unit: 'g',
     },
 
-    nutrients: nutritionResult.calculatedNutrients,
+    nutrients:
+      nutritionResult.calculatedNutrients,
 
     consumedAt: consumedAt || now,
     notes: notes || null,
-
     createdAt: now,
     updatedAt: now,
   };
 
   foodLogs.push(record);
 
+  localStorage.persist();
+
   return {
     created: true,
     duplicate: false,
     record,
   };
-}
-
-function normalizeManualNutrient(value) {
-  if (
-    value === undefined ||
-    value === null ||
-    value === ''
-  ) {
-    return null;
-  }
-
-  const numericValue = Number(value);
-
-  if (
-    !Number.isFinite(numericValue) ||
-    numericValue < 0
-  ) {
-    return null;
-  }
-
-  return roundNumber(numericValue);
 }
 
 function createManualFoodLog({
@@ -137,87 +140,49 @@ function createManualFoodLog({
   notes,
   clientRecordId,
 }) {
-  if (clientRecordId) {
-    const existingRecord = foodLogs.find(
-      (record) =>
-        record.userId === userId &&
-        record.clientRecordId === clientRecordId,
-    );
+  const existingRecord = findDuplicate({
+    userId,
+    clientRecordId,
+  });
 
-    if (existingRecord) {
-      return {
-        created: false,
-        duplicate: true,
-        record: existingRecord,
-      };
-    }
+  if (existingRecord) {
+    return {
+      created: false,
+      duplicate: true,
+      record: existingRecord,
+      customFood: null,
+    };
   }
 
-  const now = new Date().toISOString();
-
-  const record = {
-    id: randomUUID(),
+  /*
+   * Save the manually entered food as a reusable
+   * searchable food for this user.
+   */
+  const customFood = foodService.saveCustomFood({
     userId,
+    name,
+    category,
+    consumedGrams,
+    nutrients,
+  });
 
-    clientRecordId: clientRecordId || null,
-
-    food: {
-      fdcId: null,
-      name: name.trim(),
-      category: category?.trim() || null,
-
-      source: {
-        provider: 'User',
-        dataset: 'Manual nutrient entry',
-      },
-    },
-
+  /*
+   * After saving the reusable food, immediately create
+   * the selected meal log using the generated food ID.
+   */
+  const result = createFoodLog({
+    userId,
+    fdcId: customFood.source.fdcId,
+    consumedGrams,
     mealType,
-
-    quantity: {
-      consumedGrams,
-      unit: 'g',
-    },
-
-    nutrients: {
-      energyKcal: normalizeManualNutrient(
-        nutrients.energyKcal,
-      ),
-
-      proteinG: normalizeManualNutrient(
-        nutrients.proteinG,
-      ),
-
-      carbohydratesG: normalizeManualNutrient(
-        nutrients.carbohydratesG,
-      ),
-
-      fatG: normalizeManualNutrient(
-        nutrients.fatG,
-      ),
-
-      sodiumMg: normalizeManualNutrient(
-        nutrients.sodiumMg,
-      ),
-
-      potassiumMg: normalizeManualNutrient(
-        nutrients.potassiumMg,
-      ),
-    },
-
-    consumedAt: consumedAt || now,
+    consumedAt,
     notes: notes?.trim() || null,
-
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  foodLogs.push(record);
+    clientRecordId,
+  });
 
   return {
-    created: true,
-    duplicate: false,
-    record,
+    ...result,
+    customFood,
   };
 }
 
@@ -232,7 +197,8 @@ function getFoodLogs({
 
   if (mealType) {
     results = results.filter(
-      (record) => record.mealType === mealType,
+      (record) =>
+        record.mealType === mealType,
     );
   }
 
@@ -246,7 +212,9 @@ function getFoodLogs({
     );
 
     results = results.filter((record) => {
-      const consumedAt = new Date(record.consumedAt);
+      const consumedAt = new Date(
+        record.consumedAt,
+      );
 
       return (
         consumedAt >= startDate &&
@@ -307,6 +275,7 @@ function updateFoodLog({
 
   const nutritionResult =
     nutritionService.calculateNutrition({
+      userId,
       fdcId: nextFdcId,
       consumedGrams: nextConsumedGrams,
     });
@@ -354,6 +323,8 @@ function updateFoodLog({
 
   foodLogs[index] = updatedRecord;
 
+  localStorage.persist();
+
   return {
     status: 'updated',
     record: updatedRecord,
@@ -379,15 +350,21 @@ function deleteFoodLog({
     1,
   );
 
+  localStorage.persist();
+
   return deletedRecord;
 }
 
-function sumNutrient(records, nutrientKey) {
+function sumNutrient(
+  records,
+  nutrientKey,
+) {
   let total = 0;
   let hasAvailableValue = false;
 
   for (const record of records) {
-    const value = record.nutrients?.[nutrientKey];
+    const value =
+      record.nutrients?.[nutrientKey];
 
     if (
       typeof value === 'number' &&

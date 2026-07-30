@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../config/api_config.dart';
 import '../models/food_log_entry.dart';
 import '../models/food_suggestion.dart';
+import '../models/water_container.dart';
 import '../models/water_log_entry.dart';
 import '../services/api_service.dart';
 import 'checkup_records_screen.dart';
@@ -28,7 +29,8 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
   final _api = ApiService();
   final _searchController = TextEditingController();
   final _quantityController = TextEditingController(text: '100');
-  final _customWaterController = TextEditingController(text: '250');
+
+  List<WaterContainer> _waterContainers = const [];
 
   Timer? _searchDebounce;
   Timer? _nutritionDebounce;
@@ -46,6 +48,7 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
   bool _calculating = false;
   bool _savingFood = false;
   bool _savingWater = false;
+  bool _savingContainer = false;
   bool _refreshing = false;
   String? _connectionError;
 
@@ -61,7 +64,6 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
     _nutritionDebounce?.cancel();
     _searchController.dispose();
     _quantityController.dispose();
-    _customWaterController.dispose();
     super.dispose();
   }
 
@@ -106,6 +108,7 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
         _api.getFoodSummary(),
         _api.getWaterLogs(),
         _api.getWaterSummary(),
+        _api.getWaterContainers(),
       ]);
 
       if (!mounted) return;
@@ -114,6 +117,7 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
         _foodSummary = results[1] as Map<String, dynamic>;
         _waterLogs = results[2] as List<WaterLogEntry>;
         _waterSummary = results[3] as Map<String, dynamic>;
+        _waterContainers = results[4] as List<WaterContainer>;
       });
     } catch (error) {
       if (!mounted) return;
@@ -265,27 +269,49 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
     }
   }
 
-  Future<void> _addWater(double amountMl) async {
-    if (_savingWater) return;
-    setState(() => _savingWater = true);
+  Future<void> _showWaterContainerDialog() async {
+    final result = await showDialog<_WaterContainerInput>(
+      context: context,
+      builder: (context) => const _WaterContainerDialog(),
+    );
+
+    if (result == null) return;
+
+    setState(() => _savingContainer = true);
+
     try {
-      await _api.addWater(amountMl);
+      final container = await _api.saveWaterContainer(
+        name: result.name,
+        capacityMl: result.capacityMl,
+      );
+
       await _refreshAll();
-      _showMessage('${_number(amountMl)} mL water added.');
+      _showMessage(
+        '${container.name} (${_number(container.capacityMl)} mL) was saved.',
+      );
+    } catch (error) {
+      _showMessage(_friendlyError(error), error: true);
+    } finally {
+      if (mounted) setState(() => _savingContainer = false);
+    }
+  }
+
+  Future<void> _addWaterFromContainer(WaterContainer container) async {
+    if (_savingWater) return;
+
+    setState(() => _savingWater = true);
+
+    try {
+      await _api.addWaterFromContainer(container.id);
+      await _refreshAll();
+      _showMessage(
+        '${container.name}: ${_number(container.capacityMl)} mL added.',
+      );
     } catch (error) {
       _showMessage(_friendlyError(error), error: true);
     } finally {
       if (mounted) setState(() => _savingWater = false);
     }
-  }
-
-  Future<void> _addCustomWater() async {
-    final amount = _parsePositiveNumber(_customWaterController.text);
-    if (amount == null || amount > 10000) {
-      _showMessage('Enter a water amount from 1 to 10,000 mL.', error: true);
-      return;
-    }
-    await _addWater(amount);
   }
 
   Future<void> _deleteFoodLog(FoodLogEntry item) async {
@@ -328,7 +354,7 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
             const Text(
               'Android emulator: http://10.0.2.2:3000\n'
               'Windows/iOS simulator: http://localhost:3000\n'
-              'Physical phone: use your computer LAN IP.',
+              'Physical phone: http://192.168.0.72:3000',
               style: TextStyle(fontSize: 12),
             ),
           ],
@@ -362,6 +388,18 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
     if (number == null) return '—';
     if (number == number.roundToDouble()) return number.toInt().toString();
     return number.toStringAsFixed(decimals);
+  }
+
+  bool _hasNutrient(Map<String, dynamic> nutrients, String key) {
+    final value = nutrients[key];
+
+    if (value == null || value == '') return false;
+
+    final number = value is num
+        ? value.toDouble()
+        : double.tryParse(value.toString());
+
+    return number != null && number.isFinite;
   }
 
   String _time(DateTime? value) {
@@ -552,16 +590,46 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final food = _suggestions[index];
-                    final kcal = food.nutrientsPer100g['energyKcal'];
+                    final nutrients = food.nutrientsPer100g;
+                    final optionalNutrients = <String>[];
+
+                    if (_hasNutrient(nutrients, 'carbohydratesG')) {
+                      optionalNutrients.add(
+                        'Carbs: ${_number(nutrients['carbohydratesG'])} g',
+                      );
+                    }
+
+                    if (_hasNutrient(nutrients, 'potassiumMg')) {
+                      optionalNutrients.add(
+                        'Potassium: ${_number(nutrients['potassiumMg'])} mg',
+                      );
+                    }
+
                     return ListTile(
                       title: Text(
                         food.name,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      subtitle: kcal == null
-                          ? null
-                          : Text('${_number(kcal)} kcal per 100 g'),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 4),
+                          Text(
+                            'Calories: ${_number(nutrients['energyKcal'])} kcal'
+                            ' • Sodium: ${_number(nutrients['sodiumMg'])} mg',
+                          ),
+                          if (optionalNutrients.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(optionalNutrients.join(' • ')),
+                          ],
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Values per 100 g',
+                            style: TextStyle(fontSize: 11),
+                          ),
+                        ],
+                      ),
                       trailing: const Icon(Icons.north_west_rounded, size: 18),
                       onTap: () => _selectFood(food),
                     );
@@ -617,11 +685,19 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
                   runSpacing: 8,
                   children: [
                     _nutrientPill('Calories', calculated['energyKcal'], 'kcal'),
-                    _nutrientPill('Protein', calculated['proteinG'], 'g'),
-                    _nutrientPill('Carbs', calculated['carbohydratesG'], 'g'),
-                    _nutrientPill('Fat', calculated['fatG'], 'g'),
                     _nutrientPill('Sodium', calculated['sodiumMg'], 'mg'),
-                    _nutrientPill('Potassium', calculated['potassiumMg'], 'mg'),
+                    if (_hasNutrient(calculated, 'carbohydratesG'))
+                      _nutrientPill('Carbs', calculated['carbohydratesG'], 'g'),
+                    if (_hasNutrient(calculated, 'potassiumMg'))
+                      _nutrientPill(
+                        'Potassium',
+                        calculated['potassiumMg'],
+                        'mg',
+                      ),
+                    if (_hasNutrient(calculated, 'proteinG'))
+                      _nutrientPill('Protein', calculated['proteinG'], 'g'),
+                    if (_hasNutrient(calculated, 'fatG'))
+                      _nutrientPill('Fat', calculated['fatG'], 'g'),
                   ],
                 ),
             ],
@@ -661,7 +737,7 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Session nutrition total',
+              'Saved nutrition total',
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -672,9 +748,15 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
               runSpacing: 8,
               children: [
                 _summaryTile('Calories', totals['energyKcal'], 'kcal'),
-                _summaryTile('Protein', totals['proteinG'], 'g'),
                 _summaryTile('Sodium', totals['sodiumMg'], 'mg'),
-                _summaryTile('Potassium', totals['potassiumMg'], 'mg'),
+                if (_hasNutrient(totals, 'carbohydratesG'))
+                  _summaryTile('Carbs', totals['carbohydratesG'], 'g'),
+                if (_hasNutrient(totals, 'potassiumMg'))
+                  _summaryTile('Potassium', totals['potassiumMg'], 'mg'),
+                if (_hasNutrient(totals, 'proteinG'))
+                  _summaryTile('Protein', totals['proteinG'], 'g'),
+                if (_hasNutrient(totals, 'fatG'))
+                  _summaryTile('Fat', totals['fatG'], 'g'),
               ],
             ),
           ],
@@ -707,9 +789,7 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
 
   Widget _foodLogList() {
     if (_foodLogs.isEmpty) {
-      return const _EmptyCard(
-        message: 'No food records in this backend session yet.',
-      );
+      return const _EmptyCard(message: 'No saved food records yet.');
     }
     return Card(
       child: Column(
@@ -742,6 +822,7 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
 
   Widget _waterCard() {
     final total = _waterSummary['totalMl'];
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -755,44 +836,68 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
               ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
             const Text(
-              'Session water total',
+              'Saved water total',
               style: TextStyle(color: Colors.black54),
             ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [250, 350, 500].map((amount) {
-                return FilledButton.tonal(
-                  onPressed: _savingWater
-                      ? null
-                      : () => _addWater(amount.toDouble()),
-                  child: Text('+$amount mL'),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _customWaterController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Custom amount',
-                      suffixText: 'mL',
+                  child: Text(
+                    'Reusable containers',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                FilledButton.icon(
-                  onPressed: _savingWater ? null : _addCustomWater,
-                  icon: const Icon(Icons.water_drop_outlined),
-                  label: const Text('Add water'),
+                FilledButton.tonalIcon(
+                  onPressed: _savingContainer
+                      ? null
+                      : _showWaterContainerDialog,
+                  icon: _savingContainer
+                      ? const SizedBox.square(
+                          dimension: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.add_rounded),
+                  label: const Text('New'),
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            if (_waterContainers.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Text(
+                  'No container saved yet. Tap New and enter a name and '
+                  'capacity, such as Blue Tumbler — 750 mL.',
+                ),
+              )
+            else
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _waterContainers.map((container) {
+                  return FilledButton.tonalIcon(
+                    onPressed: _savingWater
+                        ? null
+                        : () => _addWaterFromContainer(container),
+                    icon: const Icon(Icons.water_drop_outlined),
+                    label: Text(
+                      '${container.name}\n${_number(container.capacityMl)} mL',
+                      textAlign: TextAlign.center,
+                    ),
+                  );
+                }).toList(),
+              ),
+            const SizedBox(height: 12),
+            const Text(
+              'Tap a saved container to add its full capacity to the water log.',
+              style: TextStyle(fontSize: 12, color: Colors.black54),
             ),
           ],
         ),
@@ -802,10 +907,9 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
 
   Widget _waterLogList() {
     if (_waterLogs.isEmpty) {
-      return const _EmptyCard(
-        message: 'No water entries in this backend session yet.',
-      );
+      return const _EmptyCard(message: 'No saved water entries yet.');
     }
+
     return Card(
       child: Column(
         children: [
@@ -814,9 +918,14 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
               leading: const CircleAvatar(
                 child: Icon(Icons.water_drop_rounded),
               ),
-              title: Text('${_number(_waterLogs[index].amountMl)} mL'),
+              title: Text(
+                _waterLogs[index].containerName?.trim().isNotEmpty == true
+                    ? _waterLogs[index].containerName!
+                    : 'Water',
+              ),
               subtitle: Text(
-                'Manual entry • ${_time(_waterLogs[index].loggedAt)}',
+                '${_number(_waterLogs[index].amountMl)} mL'
+                ' • ${_time(_waterLogs[index].loggedAt)}',
               ),
               trailing: IconButton(
                 tooltip: 'Delete',
@@ -1021,6 +1130,102 @@ class _ManualFoodDialogState extends State<_ManualFoodDialog> {
               : null;
         },
       ),
+    );
+  }
+}
+
+class _WaterContainerInput {
+  const _WaterContainerInput({required this.name, required this.capacityMl});
+
+  final String name;
+  final double capacityMl;
+}
+
+class _WaterContainerDialog extends StatefulWidget {
+  const _WaterContainerDialog();
+
+  @override
+  State<_WaterContainerDialog> createState() => _WaterContainerDialogState();
+}
+
+class _WaterContainerDialogState extends State<_WaterContainerDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _capacityController = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _capacityController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (!_formKey.currentState!.validate()) return;
+
+    Navigator.pop(
+      context,
+      _WaterContainerInput(
+        name: _nameController.text.trim(),
+        capacityMl: double.parse(_capacityController.text.trim()),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Save water container'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _nameController,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                labelText: 'Container name',
+                hintText: 'Example: Blue tumbler',
+              ),
+              validator: (value) {
+                final text = value?.trim() ?? '';
+                if (text.length < 2) return 'Enter a container name.';
+                if (text.length > 80) {
+                  return 'Use 80 characters or fewer.';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _capacityController,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'Capacity',
+                suffixText: 'mL',
+                hintText: 'Example: 750',
+              ),
+              validator: (value) {
+                final number = double.tryParse(value?.trim() ?? '');
+                if (number == null || number <= 0 || number > 10000) {
+                  return 'Enter a capacity from 1 to 10,000 mL.';
+                }
+                return null;
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Save container')),
+      ],
     );
   }
 }
