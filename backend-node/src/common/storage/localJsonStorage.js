@@ -27,16 +27,18 @@ const COLLECTION_NAMES = [
   'customFoods',
   'waterContainers',
   'checkupRecords',
+  'wearableRecords',
 ];
 
 function emptyStorage() {
   return {
-    version: 1,
+    version: 2,
     foodLogs: [],
     waterLogs: [],
     customFoods: [],
     waterContainers: [],
     checkupRecords: [],
+    wearableRecords: [],
   };
 }
 
@@ -52,8 +54,8 @@ function normalizeStorage(value) {
   }
 
   normalized.version = Number.isInteger(value.version)
-    ? value.version
-    : 1;
+    ? Math.max(value.version, 2)
+    : 2;
 
   for (const collectionName of COLLECTION_NAMES) {
     normalized[collectionName] =

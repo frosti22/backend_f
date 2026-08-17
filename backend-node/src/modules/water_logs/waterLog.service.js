@@ -12,30 +12,86 @@ const waterContainers = localStorage.getCollection(
   'waterContainers',
 );
 
+const MILLILITERS_PER_US_FLUID_OUNCE =
+  29.5735295625;
+
 function normalizeName(value) {
   return String(value || '')
     .trim()
     .toLowerCase();
 }
 
+function normalizeCapacityUnit(value) {
+  return String(value || '').toLowerCase() ===
+    'fl_oz'
+    ? 'fl_oz'
+    : 'ml';
+}
+
+function roundNumber(
+  value,
+  decimalPlaces = 2,
+) {
+  const multiplier =
+    10 ** decimalPlaces;
+
+  return (
+    Math.round(
+      (value + Number.EPSILON) *
+        multiplier,
+    ) / multiplier
+  );
+}
+
+function convertCapacityToMl({
+  capacityValue,
+  capacityUnit,
+}) {
+  if (capacityUnit === 'fl_oz') {
+    return roundNumber(
+      capacityValue *
+        MILLILITERS_PER_US_FLUID_OUNCE,
+    );
+  }
+
+  return roundNumber(capacityValue);
+}
+
 function createWaterContainer({
   userId,
   name,
-  capacityMl,
+  capacityValue,
+  capacityUnit,
 }) {
-  const normalizedName = normalizeName(name);
-  const now = new Date().toISOString();
+  const normalizedName =
+    normalizeName(name);
+
+  const normalizedUnit =
+    normalizeCapacityUnit(
+      capacityUnit,
+    );
+
+  const capacityMl =
+    convertCapacityToMl({
+      capacityValue,
+      capacityUnit: normalizedUnit,
+    });
+
+  const now =
+    new Date().toISOString();
 
   /*
-   * If a container with the same name already exists,
-   * update its capacity instead of creating a duplicate.
+   * Update the existing container when
+   * the current user saves the same name.
    */
-  const existingIndex = waterContainers.findIndex(
-    (container) =>
-      container.userId === userId &&
-      normalizeName(container.name) ===
-        normalizedName,
-  );
+  const existingIndex =
+    waterContainers.findIndex(
+      (container) =>
+        container.userId === userId &&
+        normalizeName(
+          container.name,
+        ) === normalizedName,
+    );
 
   if (existingIndex !== -1) {
     const existing =
@@ -43,12 +99,28 @@ function createWaterContainer({
 
     const updated = {
       ...existing,
+
       name: name.trim(),
+
+      /*
+       * Original value and unit entered
+       * by the user.
+       */
+      capacityValue,
+      capacityUnit:
+        normalizedUnit,
+
+      /*
+       * Canonical value used for daily
+       * water totals.
+       */
       capacityMl,
+
       updatedAt: now,
     };
 
-    waterContainers[existingIndex] = updated;
+    waterContainers[existingIndex] =
+      updated;
 
     localStorage.persist();
 
@@ -62,7 +134,13 @@ function createWaterContainer({
     id: randomUUID(),
     userId,
     name: name.trim(),
+
+    capacityValue,
+    capacityUnit:
+      normalizedUnit,
+
     capacityMl,
+
     createdAt: now,
     updatedAt: now,
   };
@@ -77,11 +155,52 @@ function createWaterContainer({
   };
 }
 
-function getWaterContainers({ userId }) {
+function normalizeStoredContainer(
+  container,
+) {
+  /*
+   * Existing containers created before
+   * the fl oz update only have capacityMl.
+   * Treat those records as mL containers.
+   */
+  return {
+    ...container,
+
+    capacityValue:
+      Number.isFinite(
+        Number(
+          container.capacityValue,
+        ),
+      )
+        ? Number(
+            container.capacityValue,
+          )
+        : Number(
+            container.capacityMl,
+          ) || 0,
+
+    capacityUnit:
+      normalizeCapacityUnit(
+        container.capacityUnit,
+      ),
+
+    capacityMl:
+      Number(
+        container.capacityMl,
+      ) || 0,
+  };
+}
+
+function getWaterContainers({
+  userId,
+}) {
   return waterContainers
     .filter(
       (container) =>
         container.userId === userId,
+    )
+    .map(
+      normalizeStoredContainer,
     )
     .sort((a, b) =>
       String(a.name).localeCompare(
@@ -94,35 +213,46 @@ function getWaterContainerById({
   userId,
   id,
 }) {
-  return (
+  const container =
     waterContainers.find(
-      (container) =>
-        container.userId === userId &&
-        container.id === id,
-    ) || null
-  );
+      (item) =>
+        item.userId === userId &&
+        item.id === id,
+    );
+
+  return container
+    ? normalizeStoredContainer(
+        container,
+      )
+    : null;
 }
 
 function deleteWaterContainer({
   userId,
   id,
 }) {
-  const index = waterContainers.findIndex(
-    (container) =>
-      container.userId === userId &&
-      container.id === id,
-  );
+  const index =
+    waterContainers.findIndex(
+      (container) =>
+        container.userId === userId &&
+        container.id === id,
+    );
 
   if (index === -1) {
     return null;
   }
 
   const [deletedContainer] =
-    waterContainers.splice(index, 1);
+    waterContainers.splice(
+      index,
+      1,
+    );
 
   localStorage.persist();
 
-  return deletedContainer;
+  return normalizeStoredContainer(
+    deletedContainer,
+  );
 }
 
 function createWaterLog({
@@ -136,15 +266,16 @@ function createWaterLog({
   notes,
 }) {
   /*
-   * Prevent duplicate submissions from the app.
+   * Prevent duplicate submissions.
    */
   if (clientRecordId) {
-    const existingRecord = waterLogs.find(
-      (record) =>
-        record.userId === userId &&
-        record.clientRecordId ===
-          clientRecordId,
-    );
+    const existingRecord =
+      waterLogs.find(
+        (record) =>
+          record.userId === userId &&
+          record.clientRecordId ===
+            clientRecordId,
+      );
 
     if (existingRecord) {
       return {
@@ -157,10 +288,6 @@ function createWaterLog({
 
   let selectedContainer = null;
 
-  /*
-   * When the user clicks a saved container,
-   * use that container's saved name and capacity.
-   */
   if (containerId) {
     selectedContainer =
       getWaterContainerById({
@@ -173,37 +300,65 @@ function createWaterLog({
         created: false,
         duplicate: false,
         record: null,
-        reason: 'container_not_found',
+        reason:
+          'container_not_found',
       };
     }
   }
 
-  const resolvedAmount = selectedContainer
-    ? selectedContainer.capacityMl
-    : amountMl;
+  const resolvedAmount =
+    selectedContainer
+      ? selectedContainer.capacityMl
+      : amountMl;
 
-  const resolvedName = selectedContainer
-    ? selectedContainer.name
-    : containerName || null;
+  const resolvedName =
+    selectedContainer
+      ? selectedContainer.name
+      : containerName || null;
 
-  const now = new Date().toISOString();
+  const now =
+    new Date().toISOString();
 
   const record = {
     id: randomUUID(),
     userId,
+
     clientRecordId:
       clientRecordId || null,
 
     containerId:
-      selectedContainer?.id || null,
+      selectedContainer?.id ||
+      null,
 
-    containerName: resolvedName,
+    containerName:
+      resolvedName,
 
-    amountMl: resolvedAmount,
+    /*
+     * Always save the converted mL
+     * amount for consistent totals.
+     */
+    amountMl:
+      roundNumber(
+        Number(resolvedAmount),
+      ),
 
-    source: source || 'manual',
+    /*
+     * Preserve the container display
+     * value and selected unit.
+     */
+    capacityValue:
+      selectedContainer
+        ?.capacityValue ?? null,
 
-    loggedAt: loggedAt || now,
+    capacityUnit:
+      selectedContainer
+        ?.capacityUnit ?? null,
+
+    source:
+      source || 'manual',
+
+    loggedAt:
+      loggedAt || now,
 
     notes:
       typeof notes === 'string' &&
@@ -226,7 +381,9 @@ function createWaterLog({
   };
 }
 
-function getWaterLogs({ userId }) {
+function getWaterLogs({
+  userId,
+}) {
   return waterLogs
     .filter(
       (record) =>
@@ -257,24 +414,28 @@ function updateWaterLog({
   id,
   changes,
 }) {
-  const index = waterLogs.findIndex(
-    (record) =>
-      record.userId === userId &&
-      record.id === id,
-  );
+  const index =
+    waterLogs.findIndex(
+      (record) =>
+        record.userId === userId &&
+        record.id === id,
+    );
 
   if (index === -1) {
     return null;
   }
 
-  const existing = waterLogs[index];
+  const existing =
+    waterLogs[index];
 
   const updated = {
     ...existing,
 
     amountMl:
       changes.amountMl !== undefined
-        ? changes.amountMl
+        ? roundNumber(
+            changes.amountMl,
+          )
         : existing.amountMl,
 
     loggedAt:
@@ -287,7 +448,8 @@ function updateWaterLog({
         ? changes.notes
         : existing.notes,
 
-    updatedAt: new Date().toISOString(),
+    updatedAt:
+      new Date().toISOString(),
   };
 
   waterLogs[index] = updated;
@@ -301,11 +463,12 @@ function deleteWaterLog({
   userId,
   id,
 }) {
-  const index = waterLogs.findIndex(
-    (record) =>
-      record.userId === userId &&
-      record.id === id,
-  );
+  const index =
+    waterLogs.findIndex(
+      (record) =>
+        record.userId === userId &&
+        record.id === id,
+    );
 
   if (index === -1) {
     return null;
@@ -319,25 +482,31 @@ function deleteWaterLog({
   return deletedRecord;
 }
 
-function getWaterSummary({ userId }) {
+function getWaterSummary({
+  userId,
+}) {
   const records = getWaterLogs({
     userId,
   });
 
   const totalMl = records.reduce(
     (total, record) =>
-      total + record.amountMl,
+      total +
+      (Number(record.amountMl) || 0),
     0,
   );
 
   return {
-    recordCount: records.length,
+    recordCount:
+      records.length,
+
     totalMl:
-      Math.round(totalMl * 100) / 100,
+      roundNumber(totalMl),
   };
 }
 
 module.exports = {
+  MILLILITERS_PER_US_FLUID_OUNCE,
   createWaterContainer,
   getWaterContainers,
   getWaterContainerById,

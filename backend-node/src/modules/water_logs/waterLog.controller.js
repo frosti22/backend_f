@@ -4,17 +4,23 @@ const waterLogService = require(
 
 function getUserId(req) {
   return String(
-    req.header('x-user-id') || 'test-user',
+    req.header('x-user-id') ||
+      'test-user',
   ).trim();
 }
 
-function parseAmount(value) {
-  const amount = Number(value);
+function parsePositiveNumber(
+  value,
+  maximum,
+) {
+  const number = Number(value);
 
-  return Number.isFinite(amount) &&
-    amount > 0 &&
-    amount <= 10000
-    ? amount
+  return (
+    Number.isFinite(number) &&
+    number > 0 &&
+    number <= maximum
+  )
+    ? number
     : null;
 }
 
@@ -22,18 +28,47 @@ function validDate(value) {
   return (
     value === undefined ||
     value === null ||
-    !Number.isNaN(Date.parse(value))
+    !Number.isNaN(
+      Date.parse(value),
+    )
   );
 }
 
-function createWaterContainer(req, res) {
+function normalizeCapacityUnit(
+  value,
+) {
+  const unit = String(
+    value || '',
+  ).toLowerCase();
+
+  if (
+    unit === 'ml' ||
+    unit === 'fl_oz'
+  ) {
+    return unit;
+  }
+
+  return null;
+}
+
+function createWaterContainer(
+  req,
+  res,
+) {
   const name = String(
     req.body.name || '',
   ).trim();
 
-  const capacityMl = parseAmount(
-    req.body.capacityMl,
-  );
+  const capacityValue =
+    parsePositiveNumber(
+      req.body.capacityValue,
+      10000,
+    );
+
+  const capacityUnit =
+    normalizeCapacityUnit(
+      req.body.capacityUnit,
+    );
 
   if (
     name.length < 2 ||
@@ -46,54 +81,94 @@ function createWaterContainer(req, res) {
     });
   }
 
-  if (capacityMl === null) {
+  if (capacityValue === null) {
     return res.status(400).json({
       success: false,
       message:
-        'capacityMl must be between 0.01 and 10,000 mL.',
+        'capacityValue must be greater than zero.',
+    });
+  }
+
+  if (capacityUnit === null) {
+    return res.status(400).json({
+      success: false,
+      message:
+        'capacityUnit must be ml or fl_oz.',
+    });
+  }
+
+  /*
+   * Limit fluid ounces to a reasonable
+   * container size.
+   */
+  if (
+    capacityUnit === 'fl_oz' &&
+    capacityValue > 338
+  ) {
+    return res.status(400).json({
+      success: false,
+      message:
+        'Fluid-ounce capacity must be 338 fl oz or less.',
     });
   }
 
   const result =
-    waterLogService.createWaterContainer({
-      userId: getUserId(req),
-      name,
-      capacityMl,
-    });
+    waterLogService
+      .createWaterContainer({
+        userId: getUserId(req),
+        name,
+        capacityValue,
+        capacityUnit,
+      });
 
   return res
-    .status(result.created ? 201 : 200)
+    .status(
+      result.created ? 201 : 200,
+    )
     .json({
       success: true,
-      created: result.created,
+      created:
+        result.created,
 
-      message: result.created
-        ? 'Water container saved successfully.'
-        : 'Saved water container updated successfully.',
+      message:
+        result.created
+          ? 'Water container saved successfully.'
+          : 'Saved water container updated successfully.',
 
-      data: result.container,
+      data:
+        result.container,
     });
 }
 
-function getWaterContainers(req, res) {
+function getWaterContainers(
+  req,
+  res,
+) {
   const containers =
-    waterLogService.getWaterContainers({
-      userId: getUserId(req),
-    });
+    waterLogService
+      .getWaterContainers({
+        userId: getUserId(req),
+      });
 
   return res.json({
     success: true,
-    count: containers.length,
-    data: containers,
+    count:
+      containers.length,
+    data:
+      containers,
   });
 }
 
-function deleteWaterContainer(req, res) {
+function deleteWaterContainer(
+  req,
+  res,
+) {
   const container =
-    waterLogService.deleteWaterContainer({
-      userId: getUserId(req),
-      id: req.params.id,
-    });
+    waterLogService
+      .deleteWaterContainer({
+        userId: getUserId(req),
+        id: req.params.id,
+      });
 
   if (!container) {
     return res.status(404).json({
@@ -107,11 +182,15 @@ function deleteWaterContainer(req, res) {
     success: true,
     message:
       'Water container deleted successfully.',
-    data: container,
+    data:
+      container,
   });
 }
 
-function createWaterLog(req, res) {
+function createWaterLog(
+  req,
+  res,
+) {
   const containerId =
     typeof req.body.containerId ===
       'string' &&
@@ -120,12 +199,16 @@ function createWaterLog(req, res) {
       : null;
 
   /*
-   * When a saved container is selected,
-   * the amount comes from the container capacity.
+   * Direct amount input remains supported
+   * by the backend, but the Flutter UI uses
+   * reusable containers.
    */
   const amountMl = containerId
     ? null
-    : parseAmount(req.body.amountMl);
+    : parsePositiveNumber(
+        req.body.amountMl,
+        10000,
+      );
 
   if (
     !containerId &&
@@ -138,7 +221,11 @@ function createWaterLog(req, res) {
     });
   }
 
-  if (!validDate(req.body.loggedAt)) {
+  if (
+    !validDate(
+      req.body.loggedAt,
+    )
+  ) {
     return res.status(400).json({
       success: false,
       message:
@@ -147,18 +234,26 @@ function createWaterLog(req, res) {
   }
 
   const result =
-    waterLogService.createWaterLog({
-      userId: getUserId(req),
-      containerId,
-      amountMl,
-      containerName:
-        req.body.containerName,
-      loggedAt: req.body.loggedAt,
-      source: 'manual',
-      clientRecordId:
-        req.body.clientRecordId,
-      notes: req.body.notes,
-    });
+    waterLogService
+      .createWaterLog({
+        userId: getUserId(req),
+        containerId,
+        amountMl,
+
+        containerName:
+          req.body.containerName,
+
+        loggedAt:
+          req.body.loggedAt,
+
+        source: 'manual',
+
+        clientRecordId:
+          req.body.clientRecordId,
+
+        notes:
+          req.body.notes,
+      });
 
   if (!result.record) {
     return res.status(404).json({
@@ -169,38 +264,55 @@ function createWaterLog(req, res) {
   }
 
   return res
-    .status(result.duplicate ? 200 : 201)
+    .status(
+      result.duplicate
+        ? 200
+        : 201,
+    )
     .json({
       success: true,
-      duplicate: result.duplicate,
+      duplicate:
+        result.duplicate,
 
-      message: result.duplicate
-        ? 'This water entry was already submitted.'
-        : 'Water entry created successfully.',
+      message:
+        result.duplicate
+          ? 'This water entry was already submitted.'
+          : 'Water entry created successfully.',
 
-      data: result.record,
+      data:
+        result.record,
     });
 }
 
-function getWaterLogs(req, res) {
+function getWaterLogs(
+  req,
+  res,
+) {
   const records =
-    waterLogService.getWaterLogs({
-      userId: getUserId(req),
-    });
+    waterLogService
+      .getWaterLogs({
+        userId: getUserId(req),
+      });
 
   return res.json({
     success: true,
-    count: records.length,
-    data: records,
+    count:
+      records.length,
+    data:
+      records,
   });
 }
 
-function getWaterLogById(req, res) {
+function getWaterLogById(
+  req,
+  res,
+) {
   const record =
-    waterLogService.getWaterLogById({
-      userId: getUserId(req),
-      id: req.params.id,
-    });
+    waterLogService
+      .getWaterLogById({
+        userId: getUserId(req),
+        id: req.params.id,
+      });
 
   if (!record) {
     return res.status(404).json({
@@ -212,32 +324,45 @@ function getWaterLogById(req, res) {
 
   return res.json({
     success: true,
-    data: record,
+    data:
+      record,
   });
 }
 
-function updateWaterLog(req, res) {
+function updateWaterLog(
+  req,
+  res,
+) {
   const changes = {};
 
   if (
     req.body.amountMl !== undefined
   ) {
-    const amountMl = parseAmount(
-      req.body.amountMl,
-    );
+    const amountMl =
+      parsePositiveNumber(
+        req.body.amountMl,
+        10000,
+      );
 
     if (amountMl === null) {
-      return res.status(400).json({
-        success: false,
-        message:
-          'amountMl must be between 0.01 and 10,000 mL.',
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message:
+            'amountMl must be between 0.01 and 10,000 mL.',
+        });
     }
 
-    changes.amountMl = amountMl;
+    changes.amountMl =
+      amountMl;
   }
 
-  if (!validDate(req.body.loggedAt)) {
+  if (
+    !validDate(
+      req.body.loggedAt,
+    )
+  ) {
     return res.status(400).json({
       success: false,
       message:
@@ -246,22 +371,28 @@ function updateWaterLog(req, res) {
   }
 
   if (
-    req.body.loggedAt !== undefined
+    req.body.loggedAt !==
+    undefined
   ) {
     changes.loggedAt =
       req.body.loggedAt;
   }
 
-  if (req.body.notes !== undefined) {
-    changes.notes = req.body.notes;
+  if (
+    req.body.notes !==
+    undefined
+  ) {
+    changes.notes =
+      req.body.notes;
   }
 
   const record =
-    waterLogService.updateWaterLog({
-      userId: getUserId(req),
-      id: req.params.id,
-      changes,
-    });
+    waterLogService
+      .updateWaterLog({
+        userId: getUserId(req),
+        id: req.params.id,
+        changes,
+      });
 
   if (!record) {
     return res.status(404).json({
@@ -275,16 +406,21 @@ function updateWaterLog(req, res) {
     success: true,
     message:
       'Water entry updated successfully.',
-    data: record,
+    data:
+      record,
   });
 }
 
-function deleteWaterLog(req, res) {
+function deleteWaterLog(
+  req,
+  res,
+) {
   const record =
-    waterLogService.deleteWaterLog({
-      userId: getUserId(req),
-      id: req.params.id,
-    });
+    waterLogService
+      .deleteWaterLog({
+        userId: getUserId(req),
+        id: req.params.id,
+      });
 
   if (!record) {
     return res.status(404).json({
@@ -298,18 +434,24 @@ function deleteWaterLog(req, res) {
     success: true,
     message:
       'Water entry deleted successfully.',
-    data: record,
+    data:
+      record,
   });
 }
 
-function getWaterSummary(req, res) {
+function getWaterSummary(
+  req,
+  res,
+) {
   return res.json({
     success: true,
 
     data:
-      waterLogService.getWaterSummary({
-        userId: getUserId(req),
-      }),
+      waterLogService
+        .getWaterSummary({
+          userId:
+            getUserId(req),
+        }),
   });
 }
 

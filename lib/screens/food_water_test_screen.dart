@@ -9,6 +9,8 @@ import '../models/water_container.dart';
 import '../models/water_log_entry.dart';
 import '../services/api_service.dart';
 import 'checkup_records_screen.dart';
+import 'monthly_assessment_screen.dart';
+import 'wearable_dashboard_screen.dart';
 
 class FoodWaterTestScreen extends StatefulWidget {
   const FoodWaterTestScreen({super.key});
@@ -272,27 +274,40 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
   Future<void> _showWaterContainerDialog() async {
     final result = await showDialog<_WaterContainerInput>(
       context: context,
-      builder: (context) => const _WaterContainerDialog(),
+      builder: (context) {
+        return const _WaterContainerDialog();
+      },
     );
 
-    if (result == null) return;
+    if (result == null) {
+      return;
+    }
 
-    setState(() => _savingContainer = true);
+    setState(() {
+      _savingContainer = true;
+    });
 
     try {
       final container = await _api.saveWaterContainer(
         name: result.name,
-        capacityMl: result.capacityMl,
+        capacityValue: result.capacityValue,
+        capacityUnit: result.capacityUnit,
       );
 
       await _refreshAll();
+
       _showMessage(
-        '${container.name} (${_number(container.capacityMl)} mL) was saved.',
+        '${container.name} '
+        '(${container.formattedCapacity}) was saved.',
       );
     } catch (error) {
       _showMessage(_friendlyError(error), error: true);
     } finally {
-      if (mounted) setState(() => _savingContainer = false);
+      if (mounted) {
+        setState(() {
+          _savingContainer = false;
+        });
+      }
     }
   }
 
@@ -419,6 +434,28 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
       appBar: AppBar(
         title: const Text('Food & Water Test'),
         actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const MonthlyAssessmentScreen(),
+                ),
+              );
+            },
+            tooltip: 'Monthly assessment',
+            icon: const Icon(Icons.analytics_outlined),
+          ),
+          IconButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const WearableDashboardScreen(),
+                ),
+              );
+            },
+            tooltip: 'Wearable data',
+            icon: const Icon(Icons.watch_outlined),
+          ),
           IconButton(
             onPressed: () {
               Navigator.of(context).push(
@@ -591,19 +628,6 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
                   itemBuilder: (context, index) {
                     final food = _suggestions[index];
                     final nutrients = food.nutrientsPer100g;
-                    final optionalNutrients = <String>[];
-
-                    if (_hasNutrient(nutrients, 'carbohydratesG')) {
-                      optionalNutrients.add(
-                        'Carbs: ${_number(nutrients['carbohydratesG'])} g',
-                      );
-                    }
-
-                    if (_hasNutrient(nutrients, 'potassiumMg')) {
-                      optionalNutrients.add(
-                        'Potassium: ${_number(nutrients['potassiumMg'])} mg',
-                      );
-                    }
 
                     return ListTile(
                       title: Text(
@@ -615,15 +639,18 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(height: 4),
+
+                          // Search results display only
+                          // calories and sodium.
                           Text(
-                            'Calories: ${_number(nutrients['energyKcal'])} kcal'
-                            ' • Sodium: ${_number(nutrients['sodiumMg'])} mg',
+                            'Calories: '
+                            '${_number(nutrients['energyKcal'])} kcal'
+                            ' • Sodium: '
+                            '${_number(nutrients['sodiumMg'])} mg',
                           ),
-                          if (optionalNutrients.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Text(optionalNutrients.join(' • ')),
-                          ],
+
                           const SizedBox(height: 2),
+
                           const Text(
                             'Values per 100 g',
                             style: TextStyle(fontSize: 11),
@@ -684,20 +711,25 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
+                    // Always displayed.
                     _nutrientPill('Calories', calculated['energyKcal'], 'kcal'),
+
                     _nutrientPill('Sodium', calculated['sodiumMg'], 'mg'),
+
+                    _nutrientPill('Protein', calculated['proteinG'], 'g'),
+
+                    _nutrientPill('Fat', calculated['fatG'], 'g'),
+
+                    // Displayed only when available.
                     if (_hasNutrient(calculated, 'carbohydratesG'))
                       _nutrientPill('Carbs', calculated['carbohydratesG'], 'g'),
+
                     if (_hasNutrient(calculated, 'potassiumMg'))
                       _nutrientPill(
                         'Potassium',
                         calculated['potassiumMg'],
                         'mg',
                       ),
-                    if (_hasNutrient(calculated, 'proteinG'))
-                      _nutrientPill('Protein', calculated['proteinG'], 'g'),
-                    if (_hasNutrient(calculated, 'fatG'))
-                      _nutrientPill('Fat', calculated['fatG'], 'g'),
                   ],
                 ),
             ],
@@ -749,14 +781,12 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
               children: [
                 _summaryTile('Calories', totals['energyKcal'], 'kcal'),
                 _summaryTile('Sodium', totals['sodiumMg'], 'mg'),
+                _summaryTile('Protein', totals['proteinG'], 'g'),
+                _summaryTile('Fat', totals['fatG'], 'g'),
                 if (_hasNutrient(totals, 'carbohydratesG'))
                   _summaryTile('Carbs', totals['carbohydratesG'], 'g'),
                 if (_hasNutrient(totals, 'potassiumMg'))
                   _summaryTile('Potassium', totals['potassiumMg'], 'mg'),
-                if (_hasNutrient(totals, 'proteinG'))
-                  _summaryTile('Protein', totals['proteinG'], 'g'),
-                if (_hasNutrient(totals, 'fatG'))
-                  _summaryTile('Fat', totals['fatG'], 'g'),
               ],
             ),
           ],
@@ -874,7 +904,7 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
                 ),
                 child: const Text(
                   'No container saved yet. Tap New and enter a name and '
-                  'capacity, such as Blue Tumbler — 750 mL.',
+                  'capacity, such as Blue Tumbler — 750 mL or 24 fl oz.',
                 ),
               )
             else
@@ -888,7 +918,7 @@ class _FoodWaterTestScreenState extends State<FoodWaterTestScreen> {
                         : () => _addWaterFromContainer(container),
                     icon: const Icon(Icons.water_drop_outlined),
                     label: Text(
-                      '${container.name}\n${_number(container.capacityMl)} mL',
+                      '${container.name}\n${container.formattedCapacity}',
                       textAlign: TextAlign.center,
                     ),
                   );
@@ -1135,10 +1165,15 @@ class _ManualFoodDialogState extends State<_ManualFoodDialog> {
 }
 
 class _WaterContainerInput {
-  const _WaterContainerInput({required this.name, required this.capacityMl});
+  const _WaterContainerInput({
+    required this.name,
+    required this.capacityValue,
+    required this.capacityUnit,
+  });
 
   final String name;
-  final double capacityMl;
+  final double capacityValue;
+  final String capacityUnit;
 }
 
 class _WaterContainerDialog extends StatefulWidget {
@@ -1152,6 +1187,12 @@ class _WaterContainerDialogState extends State<_WaterContainerDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _capacityController = TextEditingController();
+
+  String _capacityUnit = 'ml';
+
+  String get _unitLabel {
+    return _capacityUnit == 'fl_oz' ? 'fl oz' : 'mL';
+  }
 
   @override
   void dispose() {
@@ -1167,56 +1208,107 @@ class _WaterContainerDialogState extends State<_WaterContainerDialog> {
       context,
       _WaterContainerInput(
         name: _nameController.text.trim(),
-        capacityMl: double.parse(_capacityController.text.trim()),
+        capacityValue: double.parse(_capacityController.text.trim()),
+        capacityUnit: _capacityUnit,
       ),
     );
+  }
+
+  String? _validateCapacity(String? value) {
+    final capacity = double.tryParse(value?.trim() ?? '');
+
+    if (capacity == null || capacity <= 0) {
+      return 'Enter a valid capacity.';
+    }
+
+    if (_capacityUnit == 'ml' && capacity > 10000) {
+      return 'Enter 10,000 mL or less.';
+    }
+
+    if (_capacityUnit == 'fl_oz' && capacity > 338) {
+      return 'Enter 338 fl oz or less.';
+    }
+
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Save water container'),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: _nameController,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Container name',
-                hintText: 'Example: Blue tumbler',
+      content: SizedBox(
+        width: 420,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: _nameController,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Container name',
+                  hintText: 'Example: Blue tumbler',
+                ),
+                validator: (value) {
+                  final text = value?.trim() ?? '';
+
+                  if (text.length < 2) {
+                    return 'Enter a container name.';
+                  }
+
+                  if (text.length > 80) {
+                    return 'Use 80 characters or fewer.';
+                  }
+
+                  return null;
+                },
               ),
-              validator: (value) {
-                final text = value?.trim() ?? '';
-                if (text.length < 2) return 'Enter a container name.';
-                if (text.length > 80) {
-                  return 'Use 80 characters or fewer.';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _capacityController,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
+              const SizedBox(height: 16),
+              Text(
+                'Capacity unit',
+                style: Theme.of(context).textTheme.labelLarge,
               ),
-              decoration: const InputDecoration(
-                labelText: 'Capacity',
-                suffixText: 'mL',
-                hintText: 'Example: 750',
+              const SizedBox(height: 8),
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment<String>(value: 'ml', label: Text('mL')),
+                  ButtonSegment<String>(value: 'fl_oz', label: Text('fl oz')),
+                ],
+                selected: {_capacityUnit},
+                onSelectionChanged: (selection) {
+                  setState(() {
+                    _capacityUnit = selection.first;
+                  });
+
+                  _formKey.currentState?.validate();
+                },
               ),
-              validator: (value) {
-                final number = double.tryParse(value?.trim() ?? '');
-                if (number == null || number <= 0 || number > 10000) {
-                  return 'Enter a capacity from 1 to 10,000 mL.';
-                }
-                return null;
-              },
-            ),
-          ],
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _capacityController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: 'Capacity',
+                  suffixText: _unitLabel,
+                  hintText: _capacityUnit == 'fl_oz'
+                      ? 'Example: 24'
+                      : 'Example: 750',
+                ),
+                validator: _validateCapacity,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                _capacityUnit == 'fl_oz'
+                    ? 'US fluid ounces will be converted to mL for the saved water total.'
+                    : 'The capacity will be stored in milliliters.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
         ),
       ),
       actions: [

@@ -12,7 +12,7 @@ class ApiConfig {
 
     if (defaultTargetPlatform == TargetPlatform.android) {
       // Android Studio emulator reaches the computer through 10.0.2.2.
-      return 'http://10.0.2.2:3000';
+      return 'http://192.168.100.93:3000';
     }
 
     return 'http://localhost:3000';

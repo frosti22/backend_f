@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'screens/food_water_test_screen.dart';
+import 'screens/test_home_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const LogCkdTestApp());
 }
 
@@ -12,7 +13,7 @@ class LogCkdTestApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'log.CKD Food Test',
+      title: 'log.CKD Backend Tests',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -30,7 +31,7 @@ class LogCkdTestApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const FoodWaterTestScreen(),
+      home: const TestHomeScreen(),
     );
   }
 }
