@@ -380,6 +380,18 @@ class _WearableDashboardScreenState extends State<WearableDashboardScreen>
             ),
 
             _MetricCard(
+              title: 'Distance',
+              value: '${_snapshot.distanceMeters ~/ 1000} km',
+              icon: Icons.directions_walk,
+            ),
+
+            _MetricCard(
+              title: 'Distance',
+              value: '${_snapshot.distanceMeters ~/ 1000} km',
+              icon: Icons.directions_walk,
+            ),
+
+            _MetricCard(
               title: 'Active Seconds',
               value:
                   '${_snapshot.workouts.fold<int>(0, (total, workout) => total + workout.durationMinutes)} min',
