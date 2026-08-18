@@ -21,7 +21,7 @@ class _WearableDashboardScreenState extends State<WearableDashboardScreen>
   final ApiService _api = ApiService();
 
   // Avoid aggressive Health Connect polling/rate limiting.
-  static const Duration _autoSyncInterval = Duration(seconds: 30);
+  static const Duration _autoSyncInterval = Duration(seconds: 100);
 
   WearableSnapshot _snapshot = WearableSnapshot.empty();
 
@@ -348,6 +348,12 @@ class _WearableDashboardScreenState extends State<WearableDashboardScreen>
               icon: const Icon(Icons.health_and_safety),
               label: const Text('Connect Health Data'),
             ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: _loading ? null : _connectAndRead,
+              icon: const Icon(Icons.health_and_safety),
+              label: const Text('Disconnect Health Data'),
+            ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
               onPressed: !_authorized || _loading ? null : _readData,
@@ -364,6 +370,12 @@ class _WearableDashboardScreenState extends State<WearableDashboardScreen>
             _MetricCard(
               title: 'Steps',
               value: '${_snapshot.steps}',
+              icon: Icons.directions_walk,
+            ),
+
+            _MetricCard(
+              title: 'Distance',
+              value: '${_snapshot.distanceMeters ~/ 1000} km',
               icon: Icons.directions_walk,
             ),
 
