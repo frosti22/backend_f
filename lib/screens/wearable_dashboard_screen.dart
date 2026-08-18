@@ -21,7 +21,15 @@ class _WearableDashboardScreenState extends State<WearableDashboardScreen>
   final ApiService _api = ApiService();
 
   // Avoid aggressive Health Connect polling/rate limiting.
+<<<<<<< HEAD
   static const Duration _autoSyncInterval = Duration(seconds: 30);
+=======
+<<<<<<< HEAD
+  static const Duration _autoSyncInterval = Duration(seconds: 90);
+=======
+  static const Duration _autoSyncInterval = Duration(seconds: 30);
+>>>>>>> testbranch_4
+>>>>>>> 0f5582e7e7e68da1cac89ef7eaba38d55d82a30a
 
   WearableSnapshot _snapshot = WearableSnapshot.empty();
 
