@@ -227,11 +227,6 @@ class _WearableDashboardScreenState extends State<WearableDashboardScreen>
     return suspiciousDailyTotalReset;
   }
 
-  void _acceptSnapshot(WearableSnapshot snapshot) {
-    _snapshot = snapshot;
-    _snapshotDay = DateTime.now();
-  }
-
   bool _hasWearableDataChanged(
     WearableSnapshot oldValue,
     WearableSnapshot newValue,
@@ -280,11 +275,6 @@ class _WearableDashboardScreenState extends State<WearableDashboardScreen>
         return;
       }
 
-      setState(() {
-        _acceptSnapshot(snapshot);
-        _status = 'Health data loaded. Saving daily record...';
-      });
-
       try {
         await _api.saveWearableSnapshot(snapshot);
 
@@ -316,7 +306,7 @@ class _WearableDashboardScreenState extends State<WearableDashboardScreen>
   }
 
   String _minutesToHours(double minutes) {
-    final hours = minutes.floor() ~/ 60;
+    final hours = minutes.floor() ~/ 90;
     final remaining = minutes.round() % 60;
     return '${hours}h ${remaining}m';
   }
