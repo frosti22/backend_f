@@ -21,20 +21,12 @@ class _WearableDashboardScreenState extends State<WearableDashboardScreen>
   final ApiService _api = ApiService();
 
   // Avoid aggressive Health Connect polling/rate limiting.
-<<<<<<< HEAD
   static const Duration _autoSyncInterval = Duration(seconds: 30);
-=======
-<<<<<<< HEAD
-  static const Duration _autoSyncInterval = Duration(seconds: 90);
-=======
-  static const Duration _autoSyncInterval = Duration(seconds: 30);
->>>>>>> testbranch_4
->>>>>>> 0f5582e7e7e68da1cac89ef7eaba38d55d82a30a
 
   WearableSnapshot _snapshot = WearableSnapshot.empty();
 
-  bool _loading = false;
-  bool _authorized = false;
+  bool _loading = true;
+  bool _authorized = true;
   String _status = 'Press Connect Health Data to begin.';
 
   Timer? _autoSyncTimer;
@@ -374,21 +366,15 @@ class _WearableDashboardScreenState extends State<WearableDashboardScreen>
               value: '${_snapshot.steps}',
               icon: Icons.directions_walk,
             ),
+
             _MetricCard(
-              title: 'Distance',
-              value: _snapshot.steps > 0
-                  ? '~${(_snapshot.distanceMeters / 1000).toStringAsFixed(2)} km'
-                  : 'Not available',
-              icon: Icons.route,
-            ),
-            _MetricCard(
-              title: 'Active Minutes',
+              title: 'Active Seconds',
               value:
                   '${_snapshot.workouts.fold<int>(0, (total, workout) => total + workout.durationMinutes)} min',
               icon: Icons.timer_outlined,
             ),
             _MetricCard(
-              title: 'Active Calories Burned',
+              title: 'Active Calories',
               value: '${_snapshot.totalCaloriesKcal.toStringAsFixed(1)} kcal',
               icon: Icons.local_fire_department,
             ),
